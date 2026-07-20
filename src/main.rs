@@ -29,6 +29,11 @@ enum Commands {
         /// GitHub repo (`owner/repo` or a github.com URL)
         repo: String,
     },
+    /// Open an existing project folder in tmux
+    Open {
+        /// Project folder (name under ~, or a path)
+        path: String,
+    },
 }
 
 fn main() -> Result<()> {
@@ -37,6 +42,7 @@ fn main() -> Result<()> {
     match cli.command {
         Commands::New { name } => new_project(&name)?,
         Commands::Clone { repo } => clone_project(&repo)?,
+        Commands::Open { path } => open_project(&path)?,
     }
 
     Ok(())
@@ -86,6 +92,22 @@ fn clone_project(repo: &str) -> Result<()> {
     open_in_tmux(&name, &dir)
 }
 
+fn open_project(path: &str) -> Result<()> {
+    let dir = resolve_project_dir(path)?;
+    if !dir.is_dir() {
+        bail!("{} is not a directory", dir.display());
+    }
+
+    let name = dir
+        .file_name()
+        .and_then(|n| n.to_str())
+        .context("project folder has an invalid name")?
+        .to_string();
+    validate_name(&name)?;
+
+    open_in_tmux(&name, &dir)
+}
+
 fn open_in_tmux(name: &str, dir: &Path) -> Result<()> {
     let dir_str = dir
         .to_str()
@@ -104,6 +126,32 @@ fn home_dir() -> Result<PathBuf> {
     Ok(PathBuf::from(
         env::var("HOME").context("HOME is not set")?,
     ))
+}
+
+fn resolve_project_dir(input: &str) -> Result<PathBuf> {
+    let path = if let Some(rest) = input.strip_prefix("~/") {
+        home_dir()?.join(rest)
+    } else if input == "~" {
+        home_dir()?
+    } else if input.contains('/') || input == "." || input.starts_with('.') {
+        let candidate = PathBuf::from(input);
+        if candidate.is_absolute() {
+            candidate
+        } else {
+            env::current_dir()
+                .context("failed to get current directory")?
+                .join(candidate)
+        }
+    } else {
+        // bare name → ~/name (same as new/clone)
+        home_dir()?.join(input)
+    };
+
+    if !path.exists() {
+        bail!("{} does not exist", path.display());
+    }
+
+    fs::canonicalize(&path).with_context(|| format!("failed to resolve {}", path.display()))
 }
 
 fn parse_github_repo(input: &str) -> Result<(String, String)> {
