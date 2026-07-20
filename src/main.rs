@@ -19,7 +19,7 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// Create a project folder and open it in tmux
+    /// Create a project folder, init a git repo on main, and open it in tmux
     New {
         /// Project name (folder + tmux session)
         name: String,
@@ -54,6 +54,19 @@ fn new_project(name: &str) -> Result<()> {
     let dir = home_dir()?.join(name);
     fs::create_dir_all(&dir)
         .with_context(|| format!("failed to create {}", dir.display()))?;
+
+    if !dir.join(".git").is_dir() {
+        println!("initializing git repo on main → {}", dir.display());
+        let status = Command::new("git")
+            .args(["init", "-b", "main"])
+            .current_dir(&dir)
+            .status()
+            .context("failed to run git (is it installed?)")?;
+
+        if !status.success() {
+            bail!("git init failed with {status}");
+        }
+    }
 
     open_in_tmux(name, &dir)
 }
