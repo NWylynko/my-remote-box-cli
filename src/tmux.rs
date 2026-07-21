@@ -17,11 +17,64 @@ pub fn open_in_tmux(name: &str, dir: &Path) -> Result<()> {
     attach(name)
 }
 
+/// Name of the tmux session we're currently inside, if any.
+pub fn current_session() -> Option<String> {
+    if env::var_os("TMUX").is_none() {
+        return None;
+    }
+    let out = Command::new("tmux")
+        .args(["display-message", "-p", "#S"])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let name = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    (!name.is_empty()).then_some(name)
+}
+
+/// Window names for a session, in order (empty if the lookup fails).
+pub fn window_names(session: &str) -> Vec<String> {
+    Command::new("tmux")
+        .args(["list-windows", "-t", &format!("={session}"), "-F", "#W"])
+        .output()
+        .ok()
+        .filter(|out| out.status.success())
+        .map(|out| {
+            String::from_utf8_lossy(&out.stdout)
+                .lines()
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 pub fn detach() -> Result<()> {
     if env::var_os("TMUX").is_none() {
         bail!("not inside a tmux session — nothing to exit");
     }
     run(&["detach-client"])
+}
+
+/// Kill a session and everything running in it.
+pub fn kill_session(name: &str) -> Result<()> {
+    run(&["kill-session", "-t", &format!("={name}")])
+}
+
+/// Names of all live sessions (empty if the lookup fails or the server is down).
+pub fn session_names() -> Vec<String> {
+    Command::new("tmux")
+        .args(["list-sessions", "-F", "#S"])
+        .output()
+        .ok()
+        .filter(|out| out.status.success())
+        .map(|out| {
+            String::from_utf8_lossy(&out.stdout)
+                .lines()
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 pub fn session_exists(name: &str) -> Result<bool> {

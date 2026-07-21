@@ -8,7 +8,8 @@ use clap_complete::engine::ArgValueCompleter;
 use clap_complete::CompleteEnv;
 
 use commands::{
-    clone_project, complete_projects, exit_session, list_projects, new_project, open_project,
+    clone_project, complete_projects, complete_sessions, exit_session, list_projects, new_project,
+    open_project, pause_project, show_info,
 };
 
 #[derive(Parser, Debug)]
@@ -50,6 +51,16 @@ enum Commands {
     /// Detach from the current tmux session (leaves it running)
     #[command(visible_alias = "close", alias = "e")]
     Exit,
+    /// Show system and project info (adds current-project detail inside a session)
+    #[command(alias = "i")]
+    Info,
+    /// Kill a project's session to free memory (reopen fresh with `box open`)
+    #[command(alias = "p")]
+    Pause {
+        /// Project/session to pause (defaults to the current session)
+        #[arg(add = ArgValueCompleter::new(complete_sessions))]
+        project: Option<String>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -65,6 +76,8 @@ fn main() -> Result<()> {
         Some(Commands::Clone { repo }) => clone_project(&repo)?,
         Some(Commands::Open { path }) => open_project(&path)?,
         Some(Commands::Exit) => exit_session()?,
+        Some(Commands::Info) => show_info()?,
+        Some(Commands::Pause { project }) => pause_project(project)?,
     }
 
     Ok(())
