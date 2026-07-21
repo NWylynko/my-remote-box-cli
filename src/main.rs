@@ -14,11 +14,14 @@ use std::process::{Command, Stdio};
 )]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    /// List all set up projects (default when run with no command)
+    #[command(visible_alias = "ls")]
+    List,
     /// Create a project folder, init a git repo on main, and open it in tmux
     New {
         /// Project name (folder + tmux session)
@@ -40,11 +43,36 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::New { name } => new_project(&name)?,
-        Commands::Clone { repo } => clone_project(&repo)?,
-        Commands::Open { path } => open_project(&path)?,
+        None | Some(Commands::List) => list_projects()?,
+        Some(Commands::New { name }) => new_project(&name)?,
+        Some(Commands::Clone { repo }) => clone_project(&repo)?,
+        Some(Commands::Open { path }) => open_project(&path)?,
     }
 
+    Ok(())
+}
+
+fn list_projects() -> Result<()> {
+    let home = home_dir()?;
+
+    let mut projects: Vec<String> = fs::read_dir(&home)
+        .with_context(|| format!("failed to read {}", home.display()))?
+        .filter_map(|entry| entry.ok())
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .filter(|name| !name.starts_with('.'))
+        .filter(|name| home.join(name).join(".git").is_dir())
+        .collect();
+    projects.sort();
+
+    if projects.is_empty() {
+        println!("no projects yet — create one with `box new <name>`");
+        return Ok(());
+    }
+
+    for name in projects {
+        let marker = if tmux_session_exists(&name)? { "*" } else { " " };
+        println!("{marker} {name}");
+    }
     Ok(())
 }
 
@@ -221,12 +249,21 @@ fn tmux_session_exists(name: &str) -> Result<bool> {
 }
 
 fn create_tmux_session(name: &str, dir: &str) -> Result<()> {
-    // Window 0: claude | Window 1: agent | Window 2: shell
+    // Window 0: claude | Window 1: agent | Window 2: remote | Window 3: shell
     run_tmux(&["new-session", "-d", "-s", name, "-n", "claude", "-c", dir])?;
     run_tmux(&["send-keys", "-t", &format!("{name}:claude"), "claude", "C-m"])?;
 
     run_tmux(&["new-window", "-t", name, "-n", "agent", "-c", dir])?;
     run_tmux(&["send-keys", "-t", &format!("{name}:agent"), "agent", "C-m"])?;
+
+    run_tmux(&["new-window", "-t", name, "-n", "remote", "-c", dir])?;
+    run_tmux(&[
+        "send-keys",
+        "-t",
+        &format!("{name}:remote"),
+        "claude remote-control",
+        "C-m",
+    ])?;
 
     run_tmux(&["new-window", "-t", name, "-n", "shell", "-c", dir])?;
     run_tmux(&["select-window", "-t", &format!("{name}:shell")])?;
