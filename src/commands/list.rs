@@ -1,20 +1,10 @@
-use anyhow::{Context, Result};
-use std::fs;
+use anyhow::Result;
 
 use crate::tmux;
-use crate::util::home_dir;
+use crate::util::project_names;
 
 pub fn list_projects() -> Result<()> {
-    let home = home_dir()?;
-
-    let mut projects: Vec<String> = fs::read_dir(&home)
-        .with_context(|| format!("failed to read {}", home.display()))?
-        .filter_map(|entry| entry.ok())
-        .filter_map(|entry| entry.file_name().into_string().ok())
-        .filter(|name| !name.starts_with('.'))
-        .filter(|name| home.join(name).join(".git").is_dir())
-        .collect();
-    projects.sort();
+    let projects = project_names()?;
 
     if projects.is_empty() {
         println!("no projects yet — create one with `box new <name>`");

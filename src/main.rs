@@ -3,9 +3,11 @@ mod tmux;
 mod util;
 
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::engine::ArgValueCompleter;
+use clap_complete::CompleteEnv;
 
-use commands::{clone_project, list_projects, new_project, open_project};
+use commands::{clone_project, complete_projects, list_projects, new_project, open_project};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -37,11 +39,16 @@ enum Commands {
     /// Open an existing project folder in tmux
     Open {
         /// Project folder (name under ~, or a path)
+        #[arg(add = ArgValueCompleter::new(complete_projects))]
         path: String,
     },
 }
 
 fn main() -> Result<()> {
+    // When invoked by the shell's completion hook (COMPLETE env var set), this
+    // computes candidates — including dynamic project names — and exits.
+    CompleteEnv::with_factory(Cli::command).complete();
+
     let cli = Cli::parse();
 
     match cli.command {
