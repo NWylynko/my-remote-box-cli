@@ -4,24 +4,27 @@
 
 This is a Rust CLI whose binary is named `box` (see `[[bin]]` in `Cargo.toml`).
 
-After making changes to the source (`src/main.rs`):
+After making changes to the source, run the install script — it rebuilds,
+reinstalls, and refreshes shell completions in one shot:
 
 ```sh
-# Quick check that it compiles
-cargo build
+./install.sh
+```
 
-# Install the release build to ~/.cargo/bin/box (this is where `box` on PATH lives)
-cargo install --path .
+Then `exec zsh` to load completions in the current shell.
 
-# Regenerate the zsh completion registration shim (only needed when the set of
-# commands/args changes, or after a clap upgrade — project names complete
-# dynamically at tab-time and never need regenerating)
-COMPLETE=zsh box > ~/.oh-my-zsh/cache/completions/_box
+The script runs `cargo install --path .` (release build into `~/.cargo/bin/box`,
+where `box` on PATH lives), writes the zsh completion shim, and clears the
+compdump. Doing these by hand instead:
+
+```sh
+cargo build                                            # just a compile check -> target/debug/box
+cargo install --path .                                 # updates the installed box
+COMPLETE=zsh box > ~/.oh-my-zsh/cache/completions/_box # regen completion shim
 ```
 
 `cargo build` alone only produces `target/debug/box` and does **not** update the
-installed `box` command. To make your changes take effect for the `box` command
-on PATH, you must run `cargo install --path .`, which replaces
+installed `box` command — that requires `cargo install --path .`, which replaces
 `~/.cargo/bin/box`.
 
 The completion shim lives at `~/.oh-my-zsh/cache/completions/_box`, a directory

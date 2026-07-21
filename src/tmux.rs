@@ -17,6 +17,13 @@ pub fn open_in_tmux(name: &str, dir: &Path) -> Result<()> {
     attach(name)
 }
 
+pub fn detach() -> Result<()> {
+    if env::var_os("TMUX").is_none() {
+        bail!("not inside a tmux session — nothing to exit");
+    }
+    run(&["detach-client"])
+}
+
 pub fn session_exists(name: &str) -> Result<bool> {
     let status = Command::new("tmux")
         .args(["has-session", "-t", &format!("={name}")])
