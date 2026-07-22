@@ -1,6 +1,5 @@
 mod clone;
 mod completions;
-mod exit;
 mod info;
 mod list;
 mod new;
@@ -9,7 +8,6 @@ mod pause;
 
 pub use clone::clone_project;
 pub use completions::{complete_projects, complete_sessions};
-pub use exit::exit_session;
 pub use info::show_info;
 pub use list::list_projects;
 pub use new::new_project;

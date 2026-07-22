@@ -1,7 +1,7 @@
 use anyhow::{bail, Context, Result};
 use std::process::Command;
 
-use crate::tmux;
+use crate::herdr;
 use crate::util::{home_dir, validate_name};
 
 pub fn clone_project(repo: &str) -> Result<()> {
@@ -13,7 +13,7 @@ pub fn clone_project(repo: &str) -> Result<()> {
 
     if dir.exists() {
         if dir.join(".git").is_dir() {
-            eprintln!("{} already exists — opening session", dir.display());
+            eprintln!("{} already exists — opening workspace", dir.display());
         } else {
             bail!("{} exists and is not a git repo", dir.display());
         }
@@ -35,7 +35,7 @@ pub fn clone_project(repo: &str) -> Result<()> {
         }
     }
 
-    tmux::open_in_tmux(&name, &dir)
+    herdr::open(&name, &dir)
 }
 
 fn parse_github_repo(input: &str) -> Result<(String, String)> {

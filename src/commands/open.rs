@@ -3,7 +3,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-use crate::tmux;
+use crate::herdr;
 use crate::util::{home_dir, validate_name};
 
 pub fn open_project(path: &str) -> Result<()> {
@@ -19,7 +19,7 @@ pub fn open_project(path: &str) -> Result<()> {
         .to_string();
     validate_name(&name)?;
 
-    tmux::open_in_tmux(&name, &dir)
+    herdr::open(&name, &dir)
 }
 
 fn resolve_project_dir(input: &str) -> Result<PathBuf> {

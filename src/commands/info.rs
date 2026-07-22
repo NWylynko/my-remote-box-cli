@@ -1,9 +1,10 @@
 use anyhow::Result;
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use crate::tmux;
+use crate::herdr;
 use crate::util::{home_dir, project_names};
 
 pub fn show_info() -> Result<()> {
@@ -11,9 +12,9 @@ pub fn show_info() -> Result<()> {
     println!();
     projects_info()?;
 
-    if let Some(session) = tmux::current_session() {
+    if let Some(workspace) = herdr::current_workspace() {
         println!();
-        project_info(&session)?;
+        project_info(&workspace)?;
     }
 
     Ok(())
@@ -44,9 +45,10 @@ fn projects_info() -> Result<()> {
     let projects = project_names()?;
     row("total", &projects.len().to_string());
 
+    let live: HashSet<String> = herdr::workspace_names().into_iter().collect();
     let active: Vec<String> = projects
         .iter()
-        .filter(|name| tmux::session_exists(name).unwrap_or(false))
+        .filter(|name| live.contains(*name))
         .cloned()
         .collect();
 
@@ -59,9 +61,9 @@ fn projects_info() -> Result<()> {
     Ok(())
 }
 
-fn project_info(session: &str) -> Result<()> {
-    println!("project: {session}");
-    let dir = home_dir()?.join(session);
+fn project_info(workspace: &str) -> Result<()> {
+    println!("project: {workspace}");
+    let dir = home_dir()?.join(workspace);
     row("path", &dir.display().to_string());
 
     if dir.join(".git").is_dir() {
@@ -79,9 +81,9 @@ fn project_info(session: &str) -> Result<()> {
         row("status", &status);
     }
 
-    let windows = tmux::window_names(session);
-    if !windows.is_empty() {
-        row("windows", &windows.join(", "));
+    let tabs = herdr::tab_names(workspace);
+    if !tabs.is_empty() {
+        row("tabs", &tabs.join(", "));
     }
     Ok(())
 }

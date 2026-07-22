@@ -2,7 +2,7 @@ use anyhow::{bail, Context, Result};
 use std::fs;
 use std::process::Command;
 
-use crate::tmux;
+use crate::herdr;
 use crate::util::{home_dir, validate_name};
 
 pub fn new_project(name: &str) -> Result<()> {
@@ -25,5 +25,5 @@ pub fn new_project(name: &str) -> Result<()> {
         }
     }
 
-    tmux::open_in_tmux(name, &dir)
+    herdr::open(name, &dir)
 }
